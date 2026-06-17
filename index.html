@@ -379,7 +379,7 @@ function renderChart(){
 }
 
 function renderFamilies(){
-  const months=getFilteredMonths();
+  const months=getChartMonths(); /* Fijo al año activo, ignora filtro de mes */
   const unit=FAB_METRIC==='u'?'u':'kg';
   const fams=Object.keys(FAM_DATA);
   const famTots=fams.map(f=>({f,t:months.reduce((s,m)=>s+(FAM_DATA[f][m]||0),0)})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
@@ -623,14 +623,14 @@ function processCSVData(csvText){
     if(codes.length)DAY_CODE_DATA[fam]=codes;
   });
 
-  return rows.length;
+  return {total: lines.length-1, fab: rows.length};
 }
 
 /* ===== LOAD & REFRESH ===== */
 async function loadData(isRefresh){
   const btn=document.getElementById('refreshBtn');
   const status=document.getElementById('refreshStatus');
-  if(isRefresh){btn.textContent='&#8635; Obteniendo...';btn.className='refresh-btn';btn.disabled=true;status.textContent='';}
+  if(isRefresh){btn.innerHTML='&#8635; Obteniendo...';btn.className='refresh-btn';btn.disabled=true;status.textContent='';}
   try{
     const resp=await fetch(CSV_URL);
     if(!resp.ok)throw new Error('HTTP '+resp.status);
@@ -638,29 +638,21 @@ async function loadData(isRefresh){
     const n=processCSVData(text);
     document.getElementById('loader').classList.add('hidden');
     document.getElementById('main').style.display='';
-    /* Por defecto: mes en curso */
+    /* Por defecto: año en curso + mes en curso */
     const now=new Date();
+    const currentYear=now.getFullYear().toString();
     const currentYM=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-    state.year='';
+    state.year=YEAR_MONTHS[currentYear]?currentYear:'';
     state.mes=ALL_MONTHS.includes(currentYM)?currentYM:(ALL_MONTHS[ALL_MONTHS.length-1]||'');
     render();
     if(isRefresh){
-      btn.textContent='&#10003; Actualizado';btn.className='refresh-btn success';
-      status.textContent=new Date().toLocaleTimeString('es-AR')+' · '+n+' registros';
-      setTimeout(()=>{btn.textContent='&#8635; Actualizar';btn.className='refresh-btn';btn.disabled=false;status.textContent='';},3000);
+      btn.innerHTML='&#10003; Actualizado';btn.className='refresh-btn success';
+      status.textContent=new Date().toLocaleTimeString('es-AR')+' · '+n.fab.toLocaleString('es-AR')+' registros BARMAN ('+n.total.toLocaleString('es-AR')+' totales)';
+      setTimeout(()=>{btn.innerHTML='&#8635; Actualizar';btn.className='refresh-btn';btn.disabled=false;status.textContent='';},3000);
     }
   }catch(err){
     if(isRefresh){
-      btn.textContent='&#10007; Error';btn.className='refresh-btn error';
+      btn.innerHTML='&#10007; Error';btn.className='refresh-btn error';
       status.textContent=err.message;btn.disabled=false;
     }else{
-      document.getElementById('loader').innerHTML=`<div class="loader-inner"><div class="loader-badge" style="background:${FAB_COLOR}">BAR</div><div class="loader-name">BARMAN</div><div class="loader-text" style="color:#dc2626">Error al cargar datos</div><button class="retry-btn" onclick="loadData(false)">Reintentar</button></div>`;
-    }
-    console.error(err);
-  }
-}
-function refreshFromCSV(){loadData(true);}
-loadData(false);
-</script>
-</body>
-</html>
+      document.getElementById('loader').innerHTML=`<div class="loader-inner"><div class="loader-badge" style="background:${FAB_COLOR}">BAR</div><div class="loader-name">BARMAN</div><div class="loader-text"
