@@ -162,20 +162,29 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;}
 
   <div class="card">
     <div class="c-head">
-      <span class="c-title">Familias de productos</span>
+      <span class="c-title">Ingreso mensual x familia</span>
       <span class="c-note" id="famNote"></span>
     </div>
     <div class="fam-scroll"><div id="famWrap"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="c-head">
+      <span class="c-title">Ingreso diario x familia</span>
+      <span class="c-note" id="dailyFamNote"></span>
+    </div>
+    <div class="fam-scroll"><div id="dailyFamWrap"></div></div>
   </div>
 </div>
 
 <div class="tip" id="tip"></div>
 
 <script>
-const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSHeQ6byhXx1kd9hGG3lzIDCKZgbJc8FeLXvj_5HZkm_sWzMOHkxcctyNpQuoXNk25yceOwgANfJ23Y/pub?gid=0&single=true&output=csv';
+/* ===== CONFIGURACION ===== */
+const CSV_URL='https://docs.google.com/spreadsheets/d/1luF0uD4O0shJZ36FuETX03PZv_HyiojUnJ_l12ffM6s/pub?gid=0&single=true&output=csv';
 const FAB='BARMAN';
 const FAB_COLOR='#16a34a';
-const FAB_METRIC='kg';   /* 'kg' or 'u' */
+const FAB_METRIC='kg';
 const FAB_METRIC_LABEL='Kilos';
 const HAS_SCRAP=true;
 
@@ -183,19 +192,39 @@ const MES_ES=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","No
 function mlbl(ym){if(!ym)return'';const[y,m]=ym.split('-');return MES_ES[+m]+" '"+y.slice(2);}
 
 let state={year:'',mes:''};
-let DATA={};     /* {ym:{kg,u,sc}} */
-let FAM_DATA={}; /* {fam:{ym:val}} */
-let CODE_DATA={}; /* {fam:[{c,n,d}]} */
+let DATA={};
+let FAM_DATA={};
+let CODE_DATA={};
+let DAY_FAM_DATA={};
+let DAY_CODE_DATA={};
 let ALL_MONTHS=[];
 let YEAR_MONTHS={};
 
 /* ===== HELPERS ===== */
 function fmtNum(v){return Math.round(v).toLocaleString('es-AR');}
 function fmtShort(v){if(v>=1000000)return(v/1000000).toFixed(1)+'M';if(v>=1000)return Math.round(v/1000)+'K';return Math.round(v).toString();}
+
+/* Meses filtrados para KPIs y tabla mensual */
 function getFilteredMonths(){
   if(state.year){const ym=YEAR_MONTHS[state.year]||[];return state.mes?(ym.includes(state.mes)?[state.mes]:[]):ym;}
   return state.mes?[state.mes]:ALL_MONTHS;
 }
+
+/* Meses del año activo para el grafico (ignora filtro de mes) */
+function getChartMonths(){
+  const cy=state.year||new Date().getFullYear().toString();
+  return YEAR_MONTHS[cy]||ALL_MONTHS;
+}
+
+/* Mes a mostrar en tabla diaria */
+function getDailyMonth(){
+  if(state.mes)return state.mes;
+  const now=new Date();
+  const currentYM=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  if(ALL_MONTHS.includes(currentYM))return currentYM;
+  return ALL_MONTHS[ALL_MONTHS.length-1]||'';
+}
+
 function getVal(ym){const d=DATA[ym];if(!d)return 0;return FAB_METRIC==='u'?d.u:d.kg;}
 function getScrap(ym){return(DATA[ym]||{}).sc||0;}
 function getTot(months){return months.reduce((s,m)=>s+getVal(m),0);}
@@ -218,8 +247,9 @@ function render(){
   renderKPIs();
   renderChart();
   renderFamilies();
+  renderDailyFamilies();
   const ys=Object.keys(YEAR_MONTHS).sort();
-  document.getElementById('periodoLbl').textContent=state.year||( ys.length?(ys[0]+'&ndash;'+ys[ys.length-1]):'2024&ndash;2026');
+  document.getElementById('periodoLbl').textContent=state.year||(ys.length?(ys[0]+'–'+ys[ys.length-1]):'2024–2026');
 }
 
 function buildYearSeg(){
@@ -247,13 +277,18 @@ function renderKPIs(){
   const months=getFilteredMonths();
   const tot=getTot(months);
   const sc=HAS_SCRAP?getScrapTot(months):0;
-  const bm=months.length?months.reduce((b,m)=>getVal(m)>getVal(b)?m:b,months[0]):'';
+
+  /* Mejor mes: fijo al año activo, ignora filtro de mes */
+  const cy=state.year||new Date().getFullYear().toString();
+  const yearAllMonths=YEAR_MONTHS[cy]||ALL_MONTHS;
+  const bm=yearAllMonths.length?yearAllMonths.reduce((b,m)=>getVal(m)>getVal(b)?m:b,yearAllMonths[0]):'';
+
   const prevM=getPrevPeriod(months);
   const prevT=prevM.reduce((s,m)=>s+getVal(m),0);
   let deltaHtml='';
   if(prevT>0){
     const p=(tot-prevT)/prevT*100;
-    const lbl=months.length===1?'vs mes anterior':'vs per&iacute;odo anterior';
+    const lbl=months.length===1?'vs mes anterior':'vs período anterior';
     deltaHtml=`<div class="k-delta ${p>=0?'up':'dn'}">${p>=0?'&#9650;':'&#9660;'} ${Math.abs(p).toFixed(1)}% ${lbl}</div>`;
   }
   const subLbl=!months.length?'Sin datos':months.length===1?mlbl(months[0]):
@@ -284,18 +319,12 @@ function renderKPIs(){
       <div class="k-val">${fmtNum(totKg)} <span class="k-unit">kg</span></div>
       <div class="k-sub">Equivalente en kg</div>
     </div>`;
-  } else {
-    kpis+=`<div class="kpi">
-      <div class="k-bar"></div>
-      <div class="k-lbl">Mejor mes</div>
-      <div class="k-val" style="font-size:clamp(14px,1.8vw,22px)">${bm?mlbl(bm):'&mdash;'}</div>
-      <div class="k-sub">${bm?fmtNum(getVal(bm))+' kg':''}</div>
-    </div>`;
   }
 
+  /* Mejor mes: siempre del año activo sin importar filtro de mes */
   kpis+=`<div class="kpi">
     <div class="k-bar"></div>
-    <div class="k-lbl">Mejor mes</div>
+    <div class="k-lbl">Mejor mes &middot; ${cy}</div>
     <div class="k-val" style="font-size:clamp(14px,1.8vw,22px)">${bm?mlbl(bm):'&mdash;'}</div>
     <div class="k-sub">${bm?fmtNum(getVal(bm))+' '+unit:''}</div>
   </div>`;
@@ -304,7 +333,8 @@ function renderKPIs(){
 }
 
 function renderChart(){
-  const months=getFilteredMonths();
+  /* Siempre muestra el año activo completo, ignora filtro de mes */
+  const months=getChartMonths();
   if(!months.length){
     document.getElementById('chartWrap').innerHTML='<p style="color:var(--mut);padding:16px 0">Sin datos para el per&iacute;odo seleccionado.</p>';
     return;
@@ -325,11 +355,16 @@ function renderChart(){
     const v=getVal(m),sc=HAS_SCRAP?getScrap(m):0;
     const cx=xC(i).toFixed(1),bx=(xC(i)-barW/2).toFixed(1);
     const bh=Math.max((v/maxV)*cH,1).toFixed(1),by=yP(v).toFixed(1);
-    bars+=`<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" fill="${FAB_COLOR}" opacity=".85" rx="3" class="bar" data-m="${m}" data-v="${v}" data-sc="${sc}" style="cursor:pointer"/>`;
-    if(HAS_SCRAP&&sc>0){const sh=Math.max((sc/maxV)*cH,1).toFixed(1),sy=(+by-+sh).toFixed(1);bars+=`<rect x="${bx}" y="${sy}" width="${barW}" height="${sh}" fill="#dc2626" opacity=".5" rx="2"/>`;}
+    /* Si hay filtro de mes: resaltar el seleccionado, atenuar los demas */
+    const isSelected=state.mes===m;
+    const op=state.mes?(isSelected?'1':'.35'):'.85';
+    const opSc=state.mes?(isSelected?'.7':'.15'):'.5';
+    bars+=`<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" fill="${FAB_COLOR}" opacity="${op}" rx="3" class="bar" data-m="${m}" data-v="${v}" data-sc="${sc}" style="cursor:pointer"/>`;
+    if(HAS_SCRAP&&sc>0){const sh=Math.max((sc/maxV)*cH,1).toFixed(1),sy=(+by-+sh).toFixed(1);bars+=`<rect x="${bx}" y="${sy}" width="${barW}" height="${sh}" fill="#dc2626" opacity="${opSc}" rx="2"/>`;}
     if(i%step===0)bars+=`<text class="axn" x="${cx}" y="${(H-8)}" text-anchor="middle">${mlbl(m)}</text>`;
   });
-  document.getElementById('chartNote').textContent=FAB_METRIC_LABEL+' por mes';
+  const cy=state.year||new Date().getFullYear().toString();
+  document.getElementById('chartNote').textContent=FAB_METRIC_LABEL+' por mes · '+cy;
   document.getElementById('chartWrap').innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:480px">${grid}${yLbls}${bars}</svg>`;
   document.querySelectorAll('#chartWrap .bar').forEach(el=>{
     el.addEventListener('mouseenter',e=>{
@@ -380,6 +415,60 @@ function renderFamilies(){
   document.getElementById('famWrap').innerHTML=`<table class="ftbl">${thead}${tbody}${tfoot}</table>`;
 }
 
+function renderDailyFamilies(){
+  const ym=getDailyMonth();
+  if(!ym){
+    document.getElementById('dailyFamWrap').innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';
+    document.getElementById('dailyFamNote').textContent='';
+    return;
+  }
+  /* Reunir fechas con datos en el mes */
+  const allDates=new Set();
+  Object.values(DAY_FAM_DATA).forEach(famDays=>{
+    Object.keys(famDays).forEach(date=>{if(date.startsWith(ym))allDates.add(date);});
+  });
+  const days=[...allDates].sort();
+  if(!days.length){
+    document.getElementById('dailyFamWrap').innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos para este período.</p>';
+    document.getElementById('dailyFamNote').textContent=mlbl(ym);
+    return;
+  }
+  const unit=FAB_METRIC==='u'?'u':'kg';
+  const fams=Object.keys(DAY_FAM_DATA);
+  const famTots=fams.map(f=>({f,t:days.reduce((s,d)=>s+(DAY_FAM_DATA[f][d]||0),0)})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+  const grand=famTots.reduce((s,x)=>s+x.t,0);
+  document.getElementById('dailyFamNote').textContent=mlbl(ym)+' · '+fmtNum(grand)+' '+unit;
+  if(!famTots.length){document.getElementById('dailyFamWrap').innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
+  let uid=0;
+  const dayNums=days.map(d=>parseInt(d.split('-')[2]));
+  const thead=`<thead><tr><th class="fnm">Familia</th>${dayNums.map(n=>`<th>${n}</th>`).join('')}<th>Total</th></tr></thead>`;
+  let tbody='<tbody>';
+  famTots.forEach(({f,t})=>{
+    const id='dc'+(uid++);
+    const codes=(DAY_CODE_DATA[f]||[]).filter(item=>days.some(d=>(item.d[d]||0)>0));
+    const hasD=codes.length>0;
+    tbody+=`<tr class="fam-row${hasD?' expandable':''}" ${hasD?`onclick="toggleCodes('${id}')"`:''}><td class="fnm">${hasD?`<span class="exp-icon" id="${id}_ic">&#9658;</span>`:''}<span>${f}</span></td>`;
+    days.forEach(d=>{const v=DAY_FAM_DATA[f][d]||0;tbody+=`<td class="${v>0?'v-pos':'zero'}">${v>0?fmtNum(v):'&mdash;'}</td>`;});
+    tbody+=`<td class="tot">${fmtNum(t)}</td></tr>`;
+    if(hasD){
+      const sorted=[...codes].sort((a,b)=>days.reduce((s,d)=>s+(b.d[d]||0),0)-days.reduce((s,d)=>s+(a.d[d]||0),0));
+      let sub='';
+      sorted.forEach(item=>{
+        const ct=days.reduce((s,d)=>s+(item.d[d]||0),0);
+        sub+=`<tr><td class="code-nm"><span class="code-tag">${item.c}</span>${item.n}</td>`;
+        days.forEach(d=>{const v=item.d[d]||0;sub+=`<td class="${v>0?'v-pos':'zero'}">${v>0?fmtNum(v):'&mdash;'}</td>`;});
+        sub+=`<td class="tot">${fmtNum(ct)}</td></tr>`;
+      });
+      tbody+=`<tr id="${id}" class="code-detail-row" style="display:none"><td colspan="${days.length+2}" style="padding:0"><table class="code-subtable">${sub}</table></td></tr>`;
+    }
+  });
+  tbody+='</tbody>';
+  let tfoot='<tfoot><tr><td class="fnm">TOTAL</td>';
+  days.forEach(d=>{const t=fams.reduce((s,f)=>s+(DAY_FAM_DATA[f][d]||0),0);tfoot+=`<td>${fmtNum(t)}</td>`;});
+  tfoot+=`<td class="tot">${fmtNum(grand)}</td></tr></tfoot>`;
+  document.getElementById('dailyFamWrap').innerHTML=`<table class="ftbl">${thead}${tbody}${tfoot}</table>`;
+}
+
 function toggleCodes(id){
   const row=document.getElementById(id);if(!row)return;
   const ic=document.getElementById(id+'_ic');
@@ -402,16 +491,29 @@ function parseCSVLine(line){
   }
   res.push(cur);return res;
 }
-function parseDateYM(str){
+
+function parseDateFull(str){
   if(!str||!str.trim())return null;
   str=str.trim();
-  if(/^\d{4}-\d{2}-\d{2}/.test(str))return str.substring(0,7);
+  if(/^\d{4}-\d{2}-\d{2}/.test(str))return str.substring(0,10);
   const p=str.split('/');
   if(p.length===3){
     const a=parseInt(p[0]),b=parseInt(p[1]),y=parseInt(p[2]);
-    if(y>2000){if(a>12)return y+'-'+String(b).padStart(2,'0');if(b>12)return y+'-'+String(a).padStart(2,'0');return y+'-'+String(b).padStart(2,'0');}
+    if(y>2000){
+      /* Formato argentino DD/MM/YYYY */
+      let day,month;
+      if(a>12){day=a;month=b;}
+      else if(b>12){day=b;month=a;}
+      else{day=a;month=b;}
+      return y+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    }
   }
   return null;
+}
+
+function parseDateYM(str){
+  const full=parseDateFull(str);
+  return full?full.substring(0,7):null;
 }
 
 /* ===== PROCESS CSV ===== */
@@ -431,7 +533,10 @@ function processCSVData(csvText){
   const rows=[];
   for(let i=1;i<lines.length;i++){
     const v=parseCSVLine(lines[i]);if(v.length<4)continue;
-    const ym=parseDateYM(v[iF]);if(!ym)continue;
+    const dateStr=(v[iF]||'').trim();
+    const dateFull=parseDateFull(dateStr);
+    const ym=dateFull?dateFull.substring(0,7):parseDateYM(dateStr);
+    if(!ym)continue;
     const prov=(v[iPV]||'').trim().toUpperCase();
     const famRaw=(v[iFM]||'').trim().toUpperCase();
     let fab=PROV_MAP[prov]||null;
@@ -443,7 +548,7 @@ function processCSVData(csvText){
     let fam=famRaw;
     if(FAB==='IMPRENTA')fam=IMP_REMAP[fam]||fam;
     if(FAB==='VYMAT')fam=VYMAT_REMAP[fam]||fam;
-    rows.push({ym,fam,cod:(v[iCO]||'').trim(),nom:(v[iMP]||'').trim(),kg,u,isScrap});
+    rows.push({ym,date:dateFull||ym+'-01',fam,cod:(v[iCO]||'').trim(),nom:(v[iMP]||'').trim(),kg,u,isScrap});
   }
 
   const monthSet=new Set(rows.map(r=>r.ym));
@@ -488,6 +593,36 @@ function processCSVData(csvText){
     if(codes.length)CODE_DATA[fam]=codes;
   });
 
+  /* Datos diarios por familia */
+  DAY_FAM_DATA={};
+  prod.forEach(r=>{
+    if(!r.fam||!r.date)return;
+    if(!DAY_FAM_DATA[r.fam])DAY_FAM_DATA[r.fam]={};
+    const val=FAB_METRIC==='u'?r.u:r.kg;
+    DAY_FAM_DATA[r.fam][r.date]=(DAY_FAM_DATA[r.fam][r.date]||0)+val;
+  });
+  Object.keys(DAY_FAM_DATA).forEach(f=>Object.keys(DAY_FAM_DATA[f]).forEach(d=>{DAY_FAM_DATA[f][d]=Math.round(DAY_FAM_DATA[f][d]);}));
+
+  /* Datos diarios por codigo */
+  DAY_CODE_DATA={};
+  const dayFamMap={};
+  prod.forEach(r=>{
+    if(!r.fam||!r.cod||!r.date)return;
+    if(!dayFamMap[r.fam])dayFamMap[r.fam]={};
+    const key=r.cod+'|'+r.nom;
+    if(!dayFamMap[r.fam][key])dayFamMap[r.fam][key]={c:r.cod,n:r.nom,d:{}};
+    const val=FAB_METRIC==='u'?r.u:r.kg;
+    dayFamMap[r.fam][key].d[r.date]=(dayFamMap[r.fam][key].d[r.date]||0)+val;
+  });
+  Object.keys(dayFamMap).forEach(fam=>{
+    const codes=Object.values(dayFamMap[fam]).map(item=>{
+      const d={};
+      Object.keys(item.d).forEach(date=>{if(item.d[date]>0)d[date]=Math.round(item.d[date]);});
+      return{c:item.c,n:item.n,d,_tot:Object.values(d).reduce((s,v)=>s+v,0)};
+    }).filter(x=>x._tot>0).sort((a,b)=>b._tot-a._tot).slice(0,30).map(({c,n,d})=>({c,n,d}));
+    if(codes.length)DAY_CODE_DATA[fam]=codes;
+  });
+
   return rows.length;
 }
 
@@ -503,7 +638,11 @@ async function loadData(isRefresh){
     const n=processCSVData(text);
     document.getElementById('loader').classList.add('hidden');
     document.getElementById('main').style.display='';
-    state.year='';state.mes='';
+    /* Por defecto: mes en curso */
+    const now=new Date();
+    const currentYM=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    state.year='';
+    state.mes=ALL_MONTHS.includes(currentYM)?currentYM:(ALL_MONTHS[ALL_MONTHS.length-1]||'');
     render();
     if(isRefresh){
       btn.textContent='&#10003; Actualizado';btn.className='refresh-btn success';
