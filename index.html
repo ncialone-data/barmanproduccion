@@ -384,7 +384,7 @@ function renderLastDayFamilies(){
   const fechaLbl=DOW[dateObj.getDay()]+' '+dd+' de '+MES_FULL[mo].toLowerCase()+' de '+y;
   const day=LAST_DAY;
   const famsHere=Object.keys(DAY_FAM_DATA[day]||{});
-  const famTots=famsHere.map(f=>({f,t:DAY_FAM_DATA[day][f]||0})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+  const famTots=famsHere.map(f=>({f,t:DAY_FAM_DATA[day][f]||0})).filter(x=>x.t>0).sort((a,b)=>a.f.localeCompare(b.f,'es'));
   const grand=famTots.reduce((s,x)=>s+x.t,0);
   noteEl.textContent=fechaLbl+' \xb7 '+fmtNum(grand)+' '+(FAB_METRIC==='u'?'u':'kg');
   if(!famTots.length){wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos para '+fechaLbl+'.</p>';return;}
@@ -605,7 +605,7 @@ function renderFamilies(){
   const months=getChartMonths();
   const unit=FAB_METRIC==='u'?'u':'kg';
   const fams=Object.keys(FAM_DATA);
-  const famTots=fams.map(f=>({f,t:months.reduce((s,m)=>s+(FAM_DATA[f][m]||0),0)})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+  const famTots=fams.map(f=>({f,t:months.reduce((s,m)=>s+(FAM_DATA[f][m]||0),0)})).filter(x=>x.t>0).sort((a,b)=>a.f.localeCompare(b.f,'es'));
   const grand=famTots.reduce((s,x)=>s+x.t,0);
   document.getElementById('famNote').textContent=fmtNum(grand)+' '+unit;
   if(!famTots.length){document.getElementById('famWrap').innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
@@ -672,7 +672,7 @@ function renderDailyFamilies(){
   days.forEach(d=>{Object.keys(DAY_FAM_DATA[d]||{}).forEach(f=>famSet.add(f));});
   const fams=[...famSet];
   const famTots=fams.map(f=>({f,t:days.reduce((s,d)=>s+((DAY_FAM_DATA[d]&&DAY_FAM_DATA[d][f])||0),0)}))
-                    .filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+                    .filter(x=>x.t>0).sort((a,b)=>a.f.localeCompare(b.f,'es'));
   const grand=famTots.reduce((s,x)=>s+x.t,0);
   noteEl.textContent=mesNombre+' \xb7 '+fmtNum(grand)+' '+(FAB_METRIC==='u'?'u':'kg');
   const dayLabels=days.map(d=>d.split('-')[2].replace(/^0/,''));
@@ -728,7 +728,7 @@ function renderWeeklyFamilies(){
   if(!weeks.length){noteEl.textContent=mlbl(ym);wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
   const weekTot=(f,w)=>w.days.reduce((s,d)=>s+((DAY_FAM_DATA[d]&&DAY_FAM_DATA[d][f])||0),0);
   const fams=Object.keys(FAM_DATA);
-  const famTots=fams.map(f=>({f,t:weeks.reduce((s,w)=>s+weekTot(f,w),0)})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+  const famTots=fams.map(f=>({f,t:weeks.reduce((s,w)=>s+weekTot(f,w),0)})).filter(x=>x.t>0).sort((a,b)=>a.f.localeCompare(b.f,'es'));
   const grand=famTots.reduce((s,x)=>s+x.t,0);
   noteEl.textContent=mlbl(ym)+' \xb7 '+fmtNum(grand)+' '+unit;
   if(!famTots.length){wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
