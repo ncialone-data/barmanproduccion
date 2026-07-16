@@ -57,10 +57,10 @@ header{display:flex;align-items:flex-start;justify-content:space-between;margin-
 .refresh-btn.success{background:#16a34a;}
 .refresh-btn.error{background:#dc2626;}
 .refresh-status{font-size:11px;color:var(--mut);font-style:italic;white-space:nowrap;}
-.week-note{font-size:12px;color:var(--mut);font-style:italic;margin-left:auto;white-space:nowrap;}
 
 /* KPI */
-.kpi-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:16px;}
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
+.kpi.k-wide{grid-column:span 2;}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
 .kpi .k-bar{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r) var(--r) 0 0;background:var(--acc);}
 .kpi .k-bar.red{background:#dc2626;}
@@ -71,6 +71,27 @@ header{display:flex;align-items:flex-start;justify-content:space-between;margin-
 .kpi .k-sub{font-size:12px;color:var(--mut);margin-top:5px;}
 .kpi .k-delta{font-size:12px;margin-top:4px;font-weight:600;}
 .k-delta.up{color:#16a34a;}.k-delta.dn{color:#dc2626;}
+.k-val.mom-up{color:#16a34a;}
+.k-val.mom-dn{color:#dc2626;}
+.k-val.mom-neu{color:var(--mut);}
+.mom-bars{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+.mom-bar-row{display:grid;grid-template-columns:32px 1fr 50px;align-items:center;gap:7px;}
+.mom-bar-lbl{font-size:10px;color:var(--mut2);text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+.mom-bar-track{height:9px;background:var(--bg);border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+.mom-bar-fill{height:100%;border-radius:5px;background:var(--acc);transition:width 1s cubic-bezier(.22,1,.36,1);}
+.mom-bar-fill.prev-bar{background:var(--mut2);opacity:.5;}
+.mom-bar-amt{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--mut);text-align:right;white-space:nowrap;}
+.k-obj-split{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:8px;}
+.k-obj-pct{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:clamp(28px,4vw,42px);line-height:1;flex:none;}
+.k-obj-pct.tier-red{color:#dc2626;}
+.k-obj-pct.tier-orange{color:#f97316;}
+.k-obj-pct.tier-green{color:#16a34a;}
+.k-bar.tier-red{background:#dc2626;}
+.k-bar.tier-orange{background:#f97316;}
+.k-bar.tier-green{background:#16a34a;}
+.k-obj-rows{display:grid;grid-template-columns:max-content max-content;column-gap:14px;row-gap:6px;align-items:baseline;font-size:11px;}
+.k-obj-rows span{color:var(--mut);white-space:nowrap;}
+.k-obj-rows b{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--tx);white-space:nowrap;text-align:left;}
 
 /* CHART CARD */
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden;}
@@ -116,7 +137,7 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
 .t-nm{color:rgba(255,255,255,.65);}
 .t-v{font-family:'IBM Plex Mono',monospace;font-weight:600;}
 
-@media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr;}.kpi-row .kpi:first-child{grid-column:1/-1;}}
+@media(max-width:700px){.kpi-row{grid-template-columns:1fr 1fr;}}
 @media(max-width:500px){.kpi-row{grid-template-columns:1fr;}}
 </style>
 </head>
@@ -151,20 +172,6 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
     <span class="refresh-status" id="refreshStatus"></span>
   </div>
 
-  <div class="cutbar" id="weekBar" style="display:none">
-    <span class="cut-lbl">Semanas</span>
-    <div class="seg" id="weekSeg"></div>
-    <span class="week-note" id="weekMonthLbl"></span>
-  </div>
-
-  <div class="card">
-    <div class="c-head">
-      <span class="c-title">&Uacute;ltimo ingreso registrado</span>
-      <span class="c-note" id="lastDayNote"></span>
-    </div>
-    <div class="fam-scroll"><div id="lastDayWrap"></div></div>
-  </div>
-
   <div class="kpi-row" id="kpiRow"></div>
 
   <div class="card">
@@ -177,10 +184,10 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
 
   <div class="card">
     <div class="c-head">
-      <span class="c-title">Ingreso mensual x familia</span>
-      <span class="c-note" id="famNote"></span>
+      <span class="c-title">&Uacute;ltimo ingreso registrado</span>
+      <span class="c-note" id="lastDayNote"></span>
     </div>
-    <div class="fam-scroll"><div id="famWrap"></div></div>
+    <div class="fam-scroll"><div id="lastDayWrap"></div></div>
   </div>
 
   <div class="card">
@@ -189,6 +196,22 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
       <span class="c-note" id="dailyFamNote"></span>
     </div>
     <div class="fam-scroll"><div id="dailyFamWrap"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="c-head">
+      <span class="c-title">Ingreso semanal x familia</span>
+      <span class="c-note" id="weekFamNote"></span>
+    </div>
+    <div class="fam-scroll"><div id="weekFamWrap"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="c-head">
+      <span class="c-title">Ingreso mensual x familia</span>
+      <span class="c-note" id="famNote"></span>
+    </div>
+    <div class="fam-scroll"><div id="famWrap"></div></div>
   </div>
 </div>
 
@@ -201,11 +224,12 @@ const FAB_COLOR='#16a34a';
 const FAB_METRIC='kg';   /* 'kg' or 'u' */
 const FAB_METRIC_LABEL='Kilos';
 const HAS_SCRAP=true;
+const OBJETIVO_MENSUAL_KG=100000;   /* 100 toneladas - Barman, minuta reunion 15/07/2026, tabla objetivos produccion */
 
 const MES_ES=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 function mlbl(ym){if(!ym)return'';const[y,m]=ym.split('-');return MES_ES[+m]+" '"+y.slice(2);}
 
-let state={year:'',mes:'',weeks:new Set()};
+let state={year:'',mes:''};
 let DATA={};     /* {ym:{kg,u,sc}} */
 let FAM_DATA={}; /* {fam:{ym:val}} */
 let CODE_DATA={}; /* {fam:[{c,n,d}]} */
@@ -242,7 +266,60 @@ function getPrevPeriod(months){
   return res.filter(x=>ALL_MONTHS.includes(x));
 }
 
-/* ===== SEMANAS DEL MES (filtro adicional) ===== */
+/* ===== CORTE "MISMO PERIODO" DEL MES ANTERIOR ===== */
+/* Devuelve el ultimo dia del mes (ym) que tiene datos cargados en DAY_FAM_DATA.
+   Para un mes en curso, esto equivale al ultimo dia reportado (no forzosamente "hoy").
+   Para un mes ya cerrado, naturalmente coincide con el ultimo dia del mes completo. */
+function lastDataDayOfMonth(ym){
+  let maxDay=0;
+  Object.keys(DAY_FAM_DATA).forEach(ymd=>{
+    if(ymd.startsWith(ym+'-')){
+      const d=+ymd.substring(8,10);
+      if(d>maxDay)maxDay=d;
+    }
+  });
+  return maxDay;
+}
+function getMonthToDateTotal(ym,cutoffDay){
+  let s=0;
+  for(let d=1;d<=cutoffDay;d++){
+    const ymd=ym+'-'+String(d).padStart(2,'0');
+    s+=Object.values(DAY_FAM_DATA[ymd]||{}).reduce((a,b)=>a+b,0);
+  }
+  return s;
+}
+function getDayTotal(ymd){
+  return Object.values(DAY_FAM_DATA[ymd]||{}).reduce((a,b)=>a+b,0);
+}
+
+/* ===== OBJETIVO MENSUAL (dias habiles) ===== */
+function countBusinessDays(y,mo,fromDay,toDay){
+  let n=0;
+  for(let d=fromDay;d<=toDay;d++){
+    const dow=new Date(y,mo-1,d).getDay();
+    if(dow!==0&&dow!==6)n++;
+  }
+  return n;
+}
+function getObjectiveBreakdown(months){
+  let totalBDsum=0,elapsedBDsum=0,objAcumSum=0;
+  months.forEach(m=>{
+    const[y,mo]=m.split('-').map(Number);
+    const daysInMonth=new Date(y,mo,0).getDate();
+    const totalBD=countBusinessDays(y,mo,1,daysInMonth);
+    if(totalBD<=0)return;
+    let cutoff=lastDataDayOfMonth(m);
+    if(cutoff>daysInMonth)cutoff=daysInMonth;
+    const elapsedBD=cutoff>0?countBusinessDays(y,mo,1,cutoff):0;
+    totalBDsum+=totalBD;
+    elapsedBDsum+=elapsedBD;
+    objAcumSum+=OBJETIVO_MENSUAL_KG/totalBD*elapsedBD;
+  });
+  const dailyRate=totalBDsum>0?(OBJETIVO_MENSUAL_KG*months.length)/totalBDsum:0;
+  return{dailyRate,elapsedBD:elapsedBDsum,objAcum:objAcumSum};
+}
+
+/* ===== SEMANAS DEL MES (usado por Ingreso semanal x familia) ===== */
 function getWeeksOfMonth(ym){
   if(!ym)return[];
   const[y,mo]=ym.split('-').map(Number);
@@ -260,24 +337,17 @@ function getWeeksOfMonth(ym){
   }
   return weeks;
 }
-function getWeekFilterDays(){
-  if(!state.weeks.size)return null;
-  const weeks=getWeeksOfMonth(getDailyMonth());
-  const set=new Set();
-  state.weeks.forEach(idx=>{if(weeks[idx])weeks[idx].days.forEach(dd=>set.add(dd));});
-  return set;
-}
 
 /* ===== RENDER ===== */
 function render(){
   buildYearSeg();
   buildMonthSeg();
-  buildWeekSeg();
   renderLastDayFamilies();
   renderKPIs();
   renderChart();
   renderFamilies();
   renderDailyFamilies();
+  renderWeeklyFamilies();
   const ys=Object.keys(YEAR_MONTHS).sort();
   document.getElementById('periodoLbl').textContent=state.year||(ys.length?(ys[0]+'–'+ys[ys.length-1]):'2024–2026');
 }
@@ -287,7 +357,7 @@ function buildYearSeg(){
   const seg=document.getElementById('yearSeg');
   seg.innerHTML='<button data-y="" class="'+(state.year?'':'on')+'">Todos</button>'+
     years.map(y=>'<button data-y="'+y+'" class="'+(state.year===y?'on':'')+'" >'+y+'</button>').join('');
-  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.year=b.dataset.y;state.mes='';state.weeks=new Set();render();}));
+  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.year=b.dataset.y;state.mes='';render();}));
 }
 
 function buildMonthSeg(){
@@ -300,29 +370,7 @@ function buildMonthSeg(){
     html+='<button data-ms="'+m+'" class="'+(state.mes===m?'on':'')+'" >'+lbl+'</button>';
   });
   seg.innerHTML=html;
-  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.mes=b.dataset.ms;state.weeks=new Set();render();}));
-}
-
-function buildWeekSeg(){
-  const ym=getDailyMonth();
-  const bar=document.getElementById('weekBar');
-  const seg=document.getElementById('weekSeg');
-  const note=document.getElementById('weekMonthLbl');
-  if(!ym){bar.style.display='none';return;}
-  bar.style.display='';
-  const weeks=getWeeksOfMonth(ym);
-  const MES_FULL=["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  const[y,mo]=ym.split('-');
-  note.textContent=MES_FULL[+mo]+' '+y;
-  let html='<button data-w="all" class="'+(state.weeks.size===0?'on':'')+'">Todas</button>';
-  weeks.forEach(w=>{html+='<button data-w="'+w.idx+'" class="'+(state.weeks.has(w.idx)?'on':'')+'">'+w.start+'&ndash;'+w.end+'</button>';});
-  seg.innerHTML=html;
-  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-    const w=b.dataset.w;
-    if(w==='all'){state.weeks=new Set();}
-    else{const idx=+w;if(state.weeks.has(idx))state.weeks.delete(idx);else state.weeks.add(idx);}
-    render();
-  }));
+  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.mes=b.dataset.ms;render();}));
 }
 
 function renderLastDayFamilies(){
@@ -367,29 +415,84 @@ function renderLastDayFamilies(){
 
 function renderKPIs(){
   const months=getFilteredMonths();
-  const weekDays=getWeekFilterDays();
-  let tot,sc,subLbl,deltaHtml='';
-  if(weekDays){
-    const ymBase=getDailyMonth();
-    const arr=[...weekDays].sort();
-    tot=arr.reduce((s,d)=>s+Object.values(DAY_FAM_DATA[d]||{}).reduce((a,b)=>a+b,0),0);
-    sc=HAS_SCRAP?arr.reduce((s,d)=>s+(DAY_SCRAP_DATA[d]||0),0):0;
-    const weeksDef=getWeeksOfMonth(ymBase);
-    const sel=[...state.weeks].sort((a,b)=>a-b).map(i=>weeksDef[i]).filter(Boolean);
-    subLbl=sel.length===1?`Sem ${sel[0].start}&ndash;${sel[0].end} &middot; ${mlbl(ymBase)}`:`${sel.length} semanas &middot; ${mlbl(ymBase)}`;
-  }else{
-    tot=getTot(months);
-    sc=HAS_SCRAP?getScrapTot(months):0;
-    const prevM=getPrevPeriod(months);
-    const prevT=prevM.reduce((s,m)=>s+getVal(m),0);
-    if(prevT>0){
-      const p=(tot-prevT)/prevT*100;
-      const lbl=months.length===1?'vs mes anterior':'vs per&iacute;odo anterior';
-      deltaHtml=`<div class="k-delta ${p>=0?'up':'dn'}">${p>=0?'&#9650;':'&#9660;'} ${Math.abs(p).toFixed(1)}% ${lbl}</div>`;
-    }
-    subLbl=!months.length?'Sin datos':months.length===1?mlbl(months[0]):
-      months.length+' meses &middot; '+mlbl(months[0])+' &ndash; '+mlbl(months[months.length-1]);
+
+  /* Total del dia (ultimo ingreso registrado) - fijo, no depende de los filtros de Año/Período */
+  const lastDayTotal=LAST_DAY?getDayTotal(LAST_DAY):0;
+  let lastDayLbl='Sin datos';
+  if(LAST_DAY){
+    const[ldy,ldmo,lddd]=LAST_DAY.split('-').map(Number);
+    lastDayLbl=lddd+' '+MES_ES[ldmo]+" '"+String(ldy).slice(2);
   }
+
+  /* Avance objetivo mensual - fijo por mes(es) filtrado(s) */
+  const objBreak=getObjectiveBreakdown(months);
+  const objReal=getTot(months);
+  const objHasData=objBreak.elapsedBD>0;
+  const objPct=(objHasData&&objBreak.objAcum>0)?(objReal/objBreak.objAcum*100):null;
+  const objTier=objPct===null?'none':(objPct<50?'red':(objPct<75?'orange':'green'));
+
+  let tot,sc,subLbl;
+  tot=getTot(months);
+  sc=HAS_SCRAP?getScrapTot(months):0;
+  let prevT=0;
+  let momTitle='vs. mes anterior',momCurLbl='',momPrevLbl='';
+  if(months.length===1){
+    /* comparación contra el mismo período (mismo corte de día) del mes anterior */
+    const m0=months[0];
+    const cutoffDay=lastDataDayOfMonth(m0);
+    const prevArr=getPrevPeriod(months);
+    let pm='',cutoffPm=0;
+    if(prevArr.length&&cutoffDay>0){
+      pm=prevArr[0];
+      const daysInPm=new Date(+pm.substring(0,4),+pm.substring(5,7),0).getDate();
+      cutoffPm=Math.min(cutoffDay,daysInPm);
+      prevT=getMonthToDateTotal(pm,cutoffPm);
+    }
+    if(cutoffDay>0){
+      subLbl=`1&ndash;${cutoffDay} ${mlbl(m0)} &middot; ${cutoffDay} d&iacute;a${cutoffDay===1?'':'s'}`;
+    }else{
+      subLbl=mlbl(m0);
+    }
+    momTitle='vs. mes anterior'+(cutoffDay>0?(' &middot; d&iacute;a '+cutoffDay):'');
+    momCurLbl=MES_ES[+m0.substring(5,7)];
+    momPrevLbl=pm?MES_ES[+pm.substring(5,7)]:'';
+  }else{
+    const prevM=getPrevPeriod(months);
+    prevT=prevM.reduce((s,m)=>s+getVal(m),0);
+    subLbl=!months.length?'Sin datos':
+      months.length+' meses &middot; '+mlbl(months[0])+' &ndash; '+mlbl(months[months.length-1]);
+    momTitle='vs. per&iacute;odo anterior';
+    momCurLbl=months.length?(months.length+'m'):'';
+    momPrevLbl=prevM.length?(prevM.length+'m'):'';
+  }
+
+  /* ===== Tarjeta "vs. mes anterior" (comparador visual de 2 barras) ===== */
+  const momHasPrev=prevT>0;
+  const momP=momHasPrev?(tot-prevT)/prevT*100:null;
+  const momCls=momP===null?'mom-neu':(momP>=0?'mom-up':'mom-dn');
+  const momSign=!months.length?'Sin datos':(momP===null?'Sin mes anterior':(momP>=0?`&#9650; +${momP.toFixed(1)}%`:`&#9660; ${Math.abs(momP).toFixed(1)}%`));
+  const momMax=Math.max(tot,prevT)||1;
+  const momCurBarW=(tot/momMax*100).toFixed(1);
+  const momPrevBarW=momHasPrev?(prevT/momMax*100).toFixed(1):'0';
+  const momCurCol=momP===null?'var(--mut2)':(momP>=0?'var(--acc)':'#dc2626');
+  const momCard=`<div class="kpi">
+    <div class="k-bar"></div>
+    <div class="k-lbl">${momTitle}</div>
+    <div class="k-val ${momCls}" style="font-size:clamp(16px,2vw,26px)">${momSign}</div>
+    <div class="mom-bars">
+      <div class="mom-bar-row">
+        <span class="mom-bar-lbl">${momPrevLbl||'Ant'}</span>
+        <div class="mom-bar-track"><div class="mom-bar-fill prev-bar" style="width:${momPrevBarW}%"></div></div>
+        <span class="mom-bar-amt">${momHasPrev?fmtShort(prevT):'&mdash;'}</span>
+      </div>
+      <div class="mom-bar-row">
+        <span class="mom-bar-lbl">${momCurLbl||'Act'}</span>
+        <div class="mom-bar-track"><div class="mom-bar-fill" style="width:${momCurBarW}%;background:${momCurCol}"></div></div>
+        <span class="mom-bar-amt">${fmtShort(tot)}</span>
+      </div>
+    </div>
+  </div>`;
+
   const activeYear=state.year||new Date().getFullYear().toString();
   const yearMonths=YEAR_MONTHS[activeYear]||ALL_MONTHS;
   const bm=yearMonths.length?yearMonths.reduce((b,m)=>getVal(m)>getVal(b)?m:b,yearMonths[0]):'';
@@ -400,7 +503,30 @@ function renderKPIs(){
     <div class="k-lbl">Total &middot; ${FAB_METRIC_LABEL}</div>
     <div class="k-val">${fmtNum(tot)} <span class="k-unit">${unit}</span></div>
     <div class="k-sub">${subLbl}</div>
-    ${deltaHtml}
+  </div>`;
+
+  kpis+=momCard;
+
+  kpis+=`<div class="kpi k-wide">
+    <div class="k-bar${objTier!=='none'?' tier-'+objTier:''}"></div>
+    <div class="k-lbl">Avance objetivo mensual</div>
+    <div class="k-obj-split">
+      <div class="k-obj-pct${objTier!=='none'?' tier-'+objTier:''}">${objPct!==null?Math.round(objPct):'&mdash;'}${objPct!==null?'%':''}</div>
+      ${objHasData?`<div class="k-obj-rows">
+        <span>Objetivo mensual</span><b>${Math.round(OBJETIVO_MENSUAL_KG/1000)}ton</b>
+        <span>Kilos diarios esperado</span><b>${fmtNum(objBreak.dailyRate)} kg</b>
+        <span>D&iacute;as laborales</span><b>${objBreak.elapsedBD}</b>
+        <span>Esperado a hoy</span><b>${fmtNum(objBreak.objAcum)} kg</b>
+        <span>Kilos actuales</span><b>${fmtNum(objReal)} kg</b>
+      </div>`:`<div class="k-sub">Sin datos suficientes</div>`}
+    </div>
+  </div>`;
+
+  kpis+=`<div class="kpi">
+    <div class="k-bar"></div>
+    <div class="k-lbl">Total del d&iacute;a</div>
+    <div class="k-val">${fmtNum(lastDayTotal)} <span class="k-unit">kg</span></div>
+    <div class="k-sub">${lastDayLbl} &middot; &uacute;ltimo ingreso</div>
   </div>`;
 
   if(HAS_SCRAP){
@@ -427,13 +553,6 @@ function renderKPIs(){
       <div class="k-sub">${bm?fmtNum(getVal(bm))+' kg':''}</div>
     </div>`;
   }
-
-  kpis+=`<div class="kpi">
-    <div class="k-bar"></div>
-    <div class="k-lbl">Mejor mes &middot; ${activeYear}</div>
-    <div class="k-val" style="font-size:clamp(14px,1.8vw,22px)">${bm?mlbl(bm):'&mdash;'}</div>
-    <div class="k-sub">${bm?fmtNum(getVal(bm))+' '+unit:''}</div>
-  </div>`;
 
   document.getElementById('kpiRow').innerHTML=kpis;
 }
@@ -543,16 +662,9 @@ function renderDailyFamilies(){
     wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos diarios para '+mesNombre+'.</p>';
     return;
   }
-  const weekDays=getWeekFilterDays();  /* null = sin filtro (mes completo), o Set de ymd del periodo seleccionado */
-  const days=weekDays?allDays.filter(d=>weekDays.has(d)):allDays;
-  let weekNote='';
-  if(weekDays){
-    const weeksDef=getWeeksOfMonth(ym);
-    const sel=[...state.weeks].sort((a,b)=>a-b).map(i=>weeksDef[i]).filter(Boolean);
-    weekNote=' \xb7 '+(sel.length===1?`Sem ${sel[0].start}-${sel[0].end}`:`${sel.length} semanas`);
-  }
+  const days=allDays;
   if(!days.length){
-    noteEl.textContent=mesNombre+weekNote;
+    noteEl.textContent=mesNombre;
     wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos para el per&iacute;odo seleccionado.</p>';
     return;
   }
@@ -562,7 +674,7 @@ function renderDailyFamilies(){
   const famTots=fams.map(f=>({f,t:days.reduce((s,d)=>s+((DAY_FAM_DATA[d]&&DAY_FAM_DATA[d][f])||0),0)}))
                     .filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
   const grand=famTots.reduce((s,x)=>s+x.t,0);
-  noteEl.textContent=mesNombre+weekNote+' \xb7 '+fmtNum(grand)+' '+(FAB_METRIC==='u'?'u':'kg');
+  noteEl.textContent=mesNombre+' \xb7 '+fmtNum(grand)+' '+(FAB_METRIC==='u'?'u':'kg');
   const dayLabels=days.map(d=>d.split('-')[2].replace(/^0/,''));
   const thead=`<thead><tr><th class="fnm">Familia</th>${dayLabels.map(d=>`<th>${d}</th>`).join('')}<th>Total</th></tr></thead>`;
   let uid=0;
@@ -604,6 +716,61 @@ function renderDailyFamilies(){
   });
   tfoot+=`<td class="tot">${fmtNum(grand)}</td></tr></tfoot>`;
   wrapEl.innerHTML=`<table class="ftbl">${thead}${tbody}${tfoot}</table>`;
+}
+
+function renderWeeklyFamilies(){
+  const ym=getDailyMonth();
+  const noteEl=document.getElementById('weekFamNote');
+  const wrapEl=document.getElementById('weekFamWrap');
+  const unit=FAB_METRIC==='u'?'u':'kg';
+  if(!ym){noteEl.textContent='';wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
+  const weeks=getWeeksOfMonth(ym);
+  if(!weeks.length){noteEl.textContent=mlbl(ym);wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
+  const weekTot=(f,w)=>w.days.reduce((s,d)=>s+((DAY_FAM_DATA[d]&&DAY_FAM_DATA[d][f])||0),0);
+  const fams=Object.keys(FAM_DATA);
+  const famTots=fams.map(f=>({f,t:weeks.reduce((s,w)=>s+weekTot(f,w),0)})).filter(x=>x.t>0).sort((a,b)=>b.t-a.t);
+  const grand=famTots.reduce((s,x)=>s+x.t,0);
+  noteEl.textContent=mlbl(ym)+' \xb7 '+fmtNum(grand)+' '+unit;
+  if(!famTots.length){wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
+  let uid=0;
+  const thead=`<thead><tr><th class="fnm">Familia</th>${weeks.map(w=>`<th>${w.start}&ndash;${w.end}</th>`).join('')}<th>Total</th></tr></thead>`;
+  let tbody='<tbody>';
+  famTots.forEach(({f,t})=>{
+    const id='wf'+(uid++);
+    const codeMap={};
+    weeks.forEach((w,wi)=>{
+      w.days.forEach(d=>{
+        const dayFamCodes=(DAY_CODE_DATA[d]&&DAY_CODE_DATA[d][f])||[];
+        dayFamCodes.forEach(({c,n,v})=>{
+          if(!codeMap[c])codeMap[c]={c,n,wk:new Array(weeks.length).fill(0)};
+          codeMap[c].wk[wi]+=v;
+        });
+      });
+    });
+    const codesInMonth=Object.values(codeMap)
+      .map(item=>({...item,_tot:item.wk.reduce((s,v)=>s+v,0)}))
+      .filter(x=>x._tot>0).sort((a,b)=>b._tot-a._tot);
+    const hasD=codesInMonth.length>0;
+    tbody+=`<tr class="fam-row${hasD?' expandable':''}" ${hasD?`onclick="toggleCodes('${id}')"`:''}>`+
+      `<td class="fnm">${hasD?`<span class="exp-icon" id="${id}_ic">&#9658;</span>`:''}<span>${f}</span></td>`;
+    weeks.forEach(w=>{const v=weekTot(f,w);tbody+=`<td class="${v>0?'v-pos':'zero'}">${v>0?fmtNum(v):'&mdash;'}</td>`;});
+    tbody+=`<td class="tot">${fmtNum(t)}</td></tr>`;
+    if(hasD){
+      let sub='';
+      codesInMonth.forEach(item=>{
+        sub+=`<tr><td class="code-nm"><span class="code-tag">${item.c}</span>${item.n}</td>`;
+        weeks.forEach((w,wi)=>{const v=item.wk[wi]||0;sub+=`<td class="${v>0?'v-pos':'zero'}">${v>0?fmtNum(v):'&mdash;'}</td>`;});
+        sub+=`<td class="tot">${fmtNum(item._tot)}</td></tr>`;
+      });
+      tbody+=`<tr id="${id}" class="code-detail-row" style="display:none">`+
+        `<td colspan="${weeks.length+2}" style="padding:0"><table class="code-subtable">${sub}</table></td></tr>`;
+    }
+  });
+  tbody+='</tbody>';
+  let tfoot2='<tfoot><tr><td class="fnm">TOTAL</td>';
+  weeks.forEach(w=>{const t=fams.reduce((s,f)=>s+weekTot(f,w),0);tfoot2+=`<td>${fmtNum(t)}</td>`;});
+  tfoot2+=`<td class="tot">${fmtNum(grand)}</td></tr></tfoot>`;
+  wrapEl.innerHTML=`<table class="ftbl">${thead}${tbody}${tfoot2}</table>`;
 }
 
 function toggleCodes(id){
@@ -775,7 +942,6 @@ async function loadData(isRefresh){
     const cym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     state.year=YEAR_MONTHS[cy]?cy:'';
     state.mes=ALL_MONTHS.includes(cym)?cym:(ALL_MONTHS[ALL_MONTHS.length-1]||'');
-    state.weeks=new Set();
     render();
     if(isRefresh){
       btn.innerHTML='&#10003; Actualizado';btn.className='refresh-btn success';
