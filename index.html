@@ -294,10 +294,11 @@ function getDayTotal(ymd){
 
 /* ===== OBJETIVO MENSUAL (dias habiles) ===== */
 function countBusinessDays(y,mo,fromDay,toDay){
+  /* BARMAN trabaja de lunes a sabado: solo el domingo (0) no cuenta como dia habil */
   let n=0;
   for(let d=fromDay;d<=toDay;d++){
     const dow=new Date(y,mo-1,d).getDay();
-    if(dow!==0&&dow!==6)n++;
+    if(dow!==0)n++;
   }
   return n;
 }
@@ -316,7 +317,7 @@ function getObjectiveBreakdown(months){
     objAcumSum+=OBJETIVO_MENSUAL_KG/totalBD*elapsedBD;
   });
   const dailyRate=totalBDsum>0?(OBJETIVO_MENSUAL_KG*months.length)/totalBDsum:0;
-  return{dailyRate,elapsedBD:elapsedBDsum,objAcum:objAcumSum};
+  return{dailyRate,elapsedBD:elapsedBDsum,totalBD:totalBDsum,objAcum:objAcumSum};
 }
 
 /* ===== SEMANAS DEL MES (usado por Ingreso semanal x familia) ===== */
@@ -514,8 +515,9 @@ function renderKPIs(){
       <div class="k-obj-pct${objTier!=='none'?' tier-'+objTier:''}">${objPct!==null?Math.round(objPct):'&mdash;'}${objPct!==null?'%':''}</div>
       ${objHasData?`<div class="k-obj-rows">
         <span>Objetivo mensual</span><b>${Math.round(OBJETIVO_MENSUAL_KG/1000)}ton</b>
+        <span>D&iacute;as h&aacute;biles del mes</span><b>${objBreak.totalBD}</b>
         <span>Kilos diarios esperado</span><b>${fmtNum(objBreak.dailyRate)} kg</b>
-        <span>D&iacute;as laborales</span><b>${objBreak.elapsedBD}</b>
+        <span>D&iacute;as laborales transcurridos</span><b>${objBreak.elapsedBD}</b>
         <span>Esperado a hoy</span><b>${fmtNum(objBreak.objAcum)} kg</b>
         <span>Kilos actuales</span><b>${fmtNum(objReal)} kg</b>
       </div>`:`<div class="k-sub">Sin datos suficientes</div>`}
