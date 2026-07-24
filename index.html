@@ -204,6 +204,14 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
 
   <div class="card">
     <div class="c-head">
+      <span class="c-title">Seguimiento espec&iacute;fico</span>
+      <span class="c-note" id="codeTrackNote"></span>
+    </div>
+    <div class="fam-scroll"><div id="codeTrackWrap"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="c-head">
       <span class="c-title">Ingreso diario x familia</span>
       <span class="c-note" id="dailyFamNote"></span>
     </div>
@@ -238,6 +246,7 @@ const FAB_METRIC='kg';   /* 'kg' or 'u' */
 const FAB_METRIC_LABEL='Kilos';
 const HAS_SCRAP=true;
 const OBJETIVO_MENSUAL_KG=100000;   /* 100 toneladas - Barman, minuta reunion 15/07/2026, tabla objetivos produccion */
+const CODE_TRACK='PS0941';   /* codigo con seguimiento especifico solicitado - SERVILLETAS 33x21 MOSTAZA x 4800 */
 
 const MES_ES=["","Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 function mlbl(ym){if(!ym)return'';const[y,m]=ym.split('-');return MES_ES[+m]+" '"+y.slice(2);}
@@ -359,6 +368,7 @@ function render(){
   buildMonthSeg();
   renderLastDayFamilies();
   renderTurnos();
+  renderCodeTrack();
   renderKPIs();
   renderChart();
   renderFamilies();
@@ -465,6 +475,51 @@ function renderTurnos(){
   const thead='<thead><tr><th class="fnm">Familia</th><th>Cap x m&aacute;q</th><th>Maq TM</th><th>Maq TT</th><th>Esperado (2 turnos)</th><th>Ingresado</th><th>% Cumpl.</th></tr></thead>';
   const tfoot=`<tfoot><tr><td class="fnm">TOTAL</td><td class="cap-b">&mdash;</td><td>${totTM>0?fmtNum(totTM):'&mdash;'}</td><td>${totTT>0?fmtNum(totTT):'&mdash;'}</td><td>${fmtNum(totEsp)}</td><td class="tot">${fmtNum(totIng)}</td><td class="${totTier}">${totPct===null?'&mdash;':Math.round(totPct)+'%'}</td></tr></tfoot>`;
   wrapEl.innerHTML=`<table class="ftbl">${colgroup}${thead}<tbody>${rows}</tbody>${tfoot}</table>`;
+}
+
+function getCodeName(code){
+  const days=Object.keys(DAY_CODE_DATA);
+  for(let i=0;i<days.length;i++){
+    const famsOfDay=DAY_CODE_DATA[days[i]];
+    const famKeys=Object.keys(famsOfDay);
+    for(let j=0;j<famKeys.length;j++){
+      const item=famsOfDay[famKeys[j]].find(x=>x.c===code);
+      if(item)return item.n;
+    }
+  }
+  return '';
+}
+
+function renderCodeTrack(){
+  const noteEl=document.getElementById('codeTrackNote');
+  const wrapEl=document.getElementById('codeTrackWrap');
+  const months=getFilteredMonths();
+  const monthSet=new Set(months);
+  const name=getCodeName(CODE_TRACK);
+  const lbl=CODE_TRACK+(name?(' - '+name):'');
+  const rows=[];
+  Object.keys(DAY_CODE_DATA).sort().forEach(ymd=>{
+    const ym=ymd.substring(0,7);
+    if(!monthSet.has(ym))return;
+    let v=0;
+    const famsOfDay=DAY_CODE_DATA[ymd];
+    Object.keys(famsOfDay).forEach(fam=>{
+      const item=famsOfDay[fam].find(x=>x.c===CODE_TRACK);
+      if(item)v+=item.v;
+    });
+    if(v>0)rows.push({ymd,v});
+  });
+  if(!rows.length){
+    noteEl.textContent=lbl;
+    wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin ingresos de '+lbl+' en el per&iacute;odo seleccionado.</p>';
+    return;
+  }
+  const grand=rows.reduce((s,r)=>s+r.v,0);
+  noteEl.textContent=lbl+' \xb7 '+fmtNum(grand)+' kg';
+  const dateLbl=(ymd)=>ymd.split('-')[2].replace(/^0/,'');
+  const thead=`<thead><tr><th class="fnm">C&oacute;digo</th>${rows.map(r=>`<th>${dateLbl(r.ymd)}</th>`).join('')}<th>Total</th></tr></thead>`;
+  const bodyRow=`<tr><td class="fnm">${lbl}</td>${rows.map(r=>`<td class="v-pos">${fmtNum(r.v)}</td>`).join('')}<td class="tot">${fmtNum(grand)}</td></tr>`;
+  wrapEl.innerHTML=`<table class="ftbl">${thead}<tbody>${bodyRow}</tbody></table>`;
 }
 
 function renderKPIs(){
