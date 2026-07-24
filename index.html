@@ -113,6 +113,10 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
 .ftbl td.fnm{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;text-align:left;color:var(--tx);width:200px;}
 .ftbl td.v-pos{color:var(--tx);font-weight:500;}.ftbl td.zero{color:var(--mut2);}
 .ftbl td.tot{color:var(--acc);font-weight:700;border-left:1px solid var(--line);}
+.ftbl td.tier-red{color:#dc2626;font-weight:700;}
+.ftbl td.tier-orange{color:#f97316;font-weight:700;}
+.ftbl td.tier-green{color:#16a34a;font-weight:700;}
+.ftbl td.cap-b{font-weight:700;color:var(--tx);}
 .ftbl tfoot td{color:var(--mut);font-weight:700;border-top:2px solid var(--line);border-bottom:none;}
 .ftbl tfoot td.tot{color:var(--acc);}
 .fam-row.expandable{cursor:pointer;}
@@ -192,6 +196,14 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
 
   <div class="card">
     <div class="c-head">
+      <span class="c-title">Producido por turnos</span>
+      <span class="c-note" id="turnosNote"></span>
+    </div>
+    <div class="fam-scroll"><div id="turnosWrap"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="c-head">
       <span class="c-title">Ingreso diario x familia</span>
       <span class="c-note" id="dailyFamNote"></span>
     </div>
@@ -219,6 +231,7 @@ table.ftbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed
 
 <script>
 const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSHeQ6byhXx1kd9hGG3lzIDCKZgbJc8FeLXvj_5HZkm_sWzMOHkxcctyNpQuoXNk25yceOwgANfJ23Y/pub?gid=0&single=true&output=csv';
+const CSV_URL_TURNOS='https://docs.google.com/spreadsheets/d/e/2PACX-1vSHeQ6byhXx1kd9hGG3lzIDCKZgbJc8FeLXvj_5HZkm_sWzMOHkxcctyNpQuoXNk25yceOwgANfJ23Y/pub?gid=585237095&single=true&output=csv';
 const FAB='BARMAN';
 const FAB_COLOR='#16a34a';
 const FAB_METRIC='kg';   /* 'kg' or 'u' */
@@ -239,6 +252,7 @@ let DAY_SCRAP_DATA={}; /* {ymd:kg} */
 let ALL_MONTHS=[];
 let YEAR_MONTHS={};
 let LAST_DAY='';
+let TURNOS_DATA={};  /* {ymd:{fam:{esp,cap,tm,tt}}} */
 
 /* ===== HELPERS ===== */
 function fmtNum(v){return Math.round(v).toLocaleString('es-AR');}
@@ -344,6 +358,7 @@ function render(){
   buildYearSeg();
   buildMonthSeg();
   renderLastDayFamilies();
+  renderTurnos();
   renderKPIs();
   renderChart();
   renderFamilies();
@@ -412,6 +427,44 @@ function renderLastDayFamilies(){
   tbody+='</tbody>';
   const tfoot=`<tfoot><tr><td class="fnm">TOTAL</td><td>${fmtNum(grand)}</td><td class="tot">${fmtNum(grand)}</td></tr></tfoot>`;
   wrapEl.innerHTML=`<table class="ftbl">${thead}${tbody}${tfoot}</table>`;
+}
+
+function renderTurnos(){
+  const noteEl=document.getElementById('turnosNote');
+  const wrapEl=document.getElementById('turnosWrap');
+  if(!LAST_DAY){noteEl.textContent='';wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
+  const day=LAST_DAY;
+  const turnosDay=TURNOS_DATA[day]||null;
+  const[y,mo,dd]=day.split('-').map(Number);
+  const fechaLbl=dd+' '+MES_ES[mo]+" '"+String(y).slice(2);
+  if(!turnosDay){
+    noteEl.textContent=fechaLbl;
+    wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos de m&aacute;quinas por turno cargados para '+fechaLbl+'.</p>';
+    return;
+  }
+  const ingresadoDay=DAY_FAM_DATA[day]||{};
+  /* solo familias que efectivamente tienen fila en la solapa MAQUINAS POR TURNO BARMAN,
+     sin importar si hay produccion real (BASE) para otras familias no trackeadas por turnos */
+  const fams=Object.keys(turnosDay).sort((a,b)=>a.localeCompare(b,'es'));
+  if(!fams.length){noteEl.textContent=fechaLbl;wrapEl.innerHTML='<p style="color:var(--mut);padding:8px 0">Sin datos.</p>';return;}
+  let totEsp=0,totIng=0,totTM=0,totTT=0,rows='';
+  fams.forEach(f=>{
+    const t=turnosDay[f]||{esp:0,cap:0,tm:0,tt:0};
+    const esp=t.esp||0,cap=t.cap||0,tm=t.tm||0,tt=t.tt||0;
+    const ing=ingresadoDay[f]||0;
+    totEsp+=esp;totIng+=ing;totTM+=tm;totTT+=tt;
+    const pct=esp>0?(ing/esp*100):null;
+    const pctLbl=pct===null?'&mdash;':(Math.round(pct)+'%');
+    const tier=pct===null?'':(pct<50?'tier-red':(pct<75?'tier-orange':'tier-green'));
+    rows+=`<tr><td class="fnm">${f}</td><td class="cap-b">${cap>0?fmtNum(cap):'&mdash;'}</td><td>${tm>0?fmtNum(tm):'&mdash;'}</td><td>${tt>0?fmtNum(tt):'&mdash;'}</td><td>${fmtNum(esp)}</td><td class="${ing>0?'v-pos':'zero'}">${ing>0?fmtNum(ing):'&mdash;'}</td><td class="${tier}">${pctLbl}</td></tr>`;
+  });
+  const totPct=totEsp>0?(totIng/totEsp*100):null;
+  const totTier=totPct===null?'':(totPct<50?'tier-red':(totPct<75?'tier-orange':'tier-green'));
+  noteEl.textContent=fechaLbl+' \xb7 '+fams.length+' familias';
+  const colgroup='<colgroup><col style="width:25%"><col style="width:12.5%"><col style="width:12.5%"><col style="width:12.5%"><col style="width:12.5%"><col style="width:12.5%"><col style="width:12.5%"></colgroup>';
+  const thead='<thead><tr><th class="fnm">Familia</th><th>Cap x m&aacute;q</th><th>Maq TM</th><th>Maq TT</th><th>Esperado (2 turnos)</th><th>Ingresado</th><th>% Cumpl.</th></tr></thead>';
+  const tfoot=`<tfoot><tr><td class="fnm">TOTAL</td><td class="cap-b">&mdash;</td><td>${totTM>0?fmtNum(totTM):'&mdash;'}</td><td>${totTT>0?fmtNum(totTT):'&mdash;'}</td><td>${fmtNum(totEsp)}</td><td class="tot">${fmtNum(totIng)}</td><td class="${totTier}">${totPct===null?'&mdash;':Math.round(totPct)+'%'}</td></tr></tfoot>`;
+  wrapEl.innerHTML=`<table class="ftbl">${colgroup}${thead}<tbody>${rows}</tbody>${tfoot}</table>`;
 }
 
 function renderKPIs(){
@@ -819,6 +872,43 @@ function parseDateYM(str){
   return full?full.substring(0,7):null;
 }
 
+/* ===== PROCESS CSV (turnos) ===== */
+function processTurnosCSV(csvText){
+  TURNOS_DATA={};
+  const lines=csvText.trim().split('\n');
+  let hdrIdx=-1;
+  for(let i=0;i<lines.length;i++){
+    const cells=parseCSVLine(lines[i]);
+    if(cells[0]&&cells[0].trim().toUpperCase()==='FECHA'){hdrIdx=i;break;}
+  }
+  if(hdrIdx<0)return;
+  const hdr=parseCSVLine(lines[hdrIdx]).map(h=>h.trim());
+  const iF=hdr.indexOf('FECHA'),iFam=hdr.indexOf('FAMILIA'),
+        iCap=hdr.findIndex(h=>h.toUpperCase().startsWith('CAPACIDAD')),
+        iTM=hdr.findIndex(h=>h.toUpperCase().startsWith('TM')),
+        iTT=hdr.findIndex(h=>h.toUpperCase().startsWith('TT')),
+        iEsp=hdr.findIndex(h=>h.toUpperCase().startsWith('TOTAL ESPERADO'));
+  if(iF<0||iFam<0||iEsp<0)return;
+  for(let i=hdrIdx+1;i<lines.length;i++){
+    const v=parseCSVLine(lines[i]);
+    if(v.length<=Math.max(iF,iFam,iEsp))continue;
+    const ymd=parseDateFull(v[iF]);
+    if(!ymd)continue;
+    const fam=(v[iFam]||'').trim();
+    if(!fam)continue;
+    const esp=parseFloat((v[iEsp]||'0').replace(',','.'))||0;
+    const cap=iCap>=0?(parseFloat((v[iCap]||'0').replace(',','.'))||0):0;
+    const tm=iTM>=0?(parseFloat((v[iTM]||'0').replace(',','.'))||0):0;
+    const tt=iTT>=0?(parseFloat((v[iTT]||'0').replace(',','.'))||0):0;
+    if(!TURNOS_DATA[ymd])TURNOS_DATA[ymd]={};
+    if(!TURNOS_DATA[ymd][fam])TURNOS_DATA[ymd][fam]={esp:0,cap:0,tm:0,tt:0};
+    TURNOS_DATA[ymd][fam].esp+=esp;
+    TURNOS_DATA[ymd][fam].cap=cap;
+    TURNOS_DATA[ymd][fam].tm+=tm;
+    TURNOS_DATA[ymd][fam].tt+=tt;
+  }
+}
+
 /* ===== PROCESS CSV ===== */
 function processCSVData(csvText){
   const lines=csvText.trim().split('\n');
@@ -937,6 +1027,18 @@ async function loadData(isRefresh){
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const text=await resp.text();
     const {total,fab}=processCSVData(text);
+    try{
+      const respT=await fetch(CSV_URL_TURNOS);
+      if(respT.ok){
+        const textT=await respT.text();
+        processTurnosCSV(textT);
+      }else{
+        TURNOS_DATA={};
+      }
+    }catch(errT){
+      TURNOS_DATA={};
+      console.error('turnos fetch error',errT);
+    }
     document.getElementById('loader').classList.add('hidden');
     document.getElementById('main').style.display='';
     const now=new Date();
